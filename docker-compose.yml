@@ -1,24 +1,48 @@
-include:
-    - docker/docker-mysql.yml
+version: "3.8"
 
 services:
-    ospos:
-        image: jekkos/opensourcepos:master
-        restart: always
-        depends_on:
-            - mysql
-        # ports:
-        #     - "8000:8000"
-        networks:
-            - app_net
-        volumes:
-            - uploads:/app/public/uploads
-            - logs:/app/writable/logs
-        environment:
-            - CI_ENVIRONMENT=production
-            - FORCE_HTTPS=false
-            - PHP_TIMEZONE=UTC
-            - MYSQL_USERNAME=admin
-            - MYSQL_PASSWORD=pointofsale
-            - MYSQL_DB_NAME=ospos
-            - MYSQL_HOST_NAME=mysql
+  mysql:
+    image: mariadb:10.11
+    restart: always
+    networks:
+      - dokploy-network
+    environment:
+      - MYSQL_ROOT_PASSWORD=pointofsale
+      - MYSQL_DATABASE=ospos
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=pointofsale
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  ospos:
+    image: jekkos/opensourcepos:master
+    restart: always
+    depends_on:
+      - mysql
+    networks:
+      - dokploy-network
+    volumes:
+      - uploads:/app/public/uploads
+      - logs:/app/writable/logs
+    environment:
+      - CI_ENVIRONMENT=production
+      - FORCE_HTTPS=false
+      - PHP_TIMEZONE=UTC
+      - MYSQL_USERNAME=admin
+      - MYSQL_PASSWORD=pointofsale
+      - MYSQL_DB_NAME=ospos
+      - MYSQL_HOST_NAME=mysql
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      # This tells Dokploy to route traffic to the container's internal port 80
+      - "traefik.http.services.ospos.loadbalancer.server.port=80"
+
+networks:
+  dokploy-network:
+    external: true
+
+volumes:
+  uploads:
+  logs:
+  mysql_data:
